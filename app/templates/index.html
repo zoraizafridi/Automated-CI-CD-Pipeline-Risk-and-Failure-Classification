@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CI/CD Risk and Failure Classification</title>
+<style>
+  :root{--ink:#1c1f23;--muted:#5d6670;--line:#d9dee3;--bg:#fff;--panel:#f3f5f7;--blue:#1f4e79;--low:#3f8f5f;--med:#c98a1b;--high:#b83b4b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:720px;margin:0 auto;padding:32px 20px 64px}
+  h1{font-size:1.7rem;line-height:1.2;margin:0 0 8px}
+  h2{font-size:1rem;margin:0 0 12px}
+  p.lead{color:var(--muted);margin:0 0 24px}
+  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 16px;padding:16px;background:var(--panel)}
+  legend{font-weight:600;padding:0 6px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 16px}
+  label{display:block;font-size:.9rem;color:var(--muted)}
+  input[type=number],select{width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:4px;font:inherit;color:var(--ink);background:#fff}
+  .check{display:flex;align-items:center;gap:8px;color:var(--ink);margin-top:22px}
+  .check input{width:auto;margin:0}
+  .radios{display:flex;gap:16px;margin-top:6px;color:var(--ink)}
+  .radios label{display:flex;align-items:center;gap:6px;color:var(--ink)}
+  :focus-visible{outline:3px solid #7fb0e0;outline-offset:2px}
+  button{background:var(--blue);color:#fff;border:0;border-radius:4px;padding:10px 20px;font:inherit;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.6;cursor:wait}
+  #error{display:none;margin-top:16px;padding:12px 14px;border:1px solid var(--high);border-left-width:5px;border-radius:4px;color:#7a1f2b;background:#fdf1f2}
+  #result{display:none;margin-top:28px;border-top:1px solid var(--line);padding-top:20px}
+  .summary{display:flex;flex-wrap:wrap;gap:12px 32px;margin-bottom:12px}
+  .summary div span{display:block;color:var(--muted);font-size:.85rem}
+  .summary div strong{font-size:1.5rem}
+  #bars{margin:16px 0 8px}
+  .bar{display:grid;grid-template-columns:70px 1fr 56px;align-items:center;gap:10px;margin:8px 0;font-size:.9rem}
+  .track{background:var(--panel);height:22px;border-radius:3px;overflow:hidden}
+  .fill{height:100%;background:#b8c4d0}
+  .bar.sel .fill{background:var(--blue)}
+  .bar.sel{font-weight:700}
+  small{color:var(--muted);display:block;margin-top:12px}
+  details{margin-top:28px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <h1>CI/CD pipeline risk and failure classification</h1>
+  <p class="lead">Describe a GitHub Actions run before it starts. The model classifies it as likely to fail or succeed and gives it a Low, Medium or High risk level.</p>
+
+  <form id="form" novalidate>
+    <fieldset><legend>Change</legend>
+      <div class="grid">
+        <label>Lines added<input type="number" name="additions" min="0" step="1" value="40"></label>
+        <label>Lines deleted<input type="number" name="deletions" min="0" step="1" value="10"></label>
+        <label>Files changed<input type="number" name="files_modified" min="0" step="1" value="3"></label>
+        <label>Commit message length (characters)<input type="number" name="msg_len" min="0" step="1" value="60"></label>
+        <label class="check"><input type="checkbox" name="is_merge"> Merge commit</label>
+        <label class="check"><input type="checkbox" name="branch_is_main" checked> Default branch (main or master)</label>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>Trigger</legend>
+      <div class="grid">
+        <label>Event
+          <select name="event">{% for e in events %}<option value="{{ e }}"{% if e == 'push' %} selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+        </label>
+        <label>Hour (UTC)<input type="number" name="hour" min="0" max="23" step="1" value="12"></label>
+        <label>Day of week
+          <select name="dow">
+            {% for d in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"] %}<option value="{{ loop.index0 }}"{% if loop.index0 == 2 %} selected{% endif %}>{{ d }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>Repository history</legend>
+      <div class="grid">
+        <label>Earlier runs in the repository<input type="number" name="repo_prior_runs" min="0" step="1" value="200"></label>
+        <label>Failures in the last 10 runs<input type="number" name="repo_failures_last10" min="0" max="10" step="1" value="1"></label>
+        <div><label>Outcome of the previous run</label>
+          <div class="radios"><label><input type="radio" name="repo_prev" value="success" checked> success</label><label><input type="radio" name="repo_prev" value="failure"> failure</label></div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>Workflow history</legend>
+      <label class="check" style="margin-top:0"><input type="checkbox" name="wf_has_history" id="wfHas" checked> This workflow has earlier runs</label>
+      <div class="grid" id="wfFields" style="margin-top:12px">
+        <label>Earlier runs of this workflow<input type="number" name="wf_prior_runs" min="1" step="1" value="100"></label>
+        <label>Workflow failures in the last 10 runs<input type="number" name="wf_failures_last10" min="0" max="10" step="1" value="1"></label>
+        <div><label>Outcome of the workflow's previous run</label>
+          <div class="radios"><label><input type="radio" name="wf_prev" value="success" checked> success</label><label><input type="radio" name="wf_prev" value="failure"> failure</label></div>
+        </div>
+      </div>
+    </fieldset>
+
+    <button type="submit" id="go">Classify run</button>
+  </form>
+
+  <div id="error" role="alert"></div>
+
+  <section id="result" aria-live="polite">
+    <div class="summary">
+      <div><span>Risk level</span><strong id="rLevel"></strong></div>
+      <div><span>Classification</span><strong id="rClass"></strong></div>
+      <div><span>Model risk score</span><strong id="rScore"></strong></div>
+    </div>
+    <p id="rText"></p>
+    <h2>Failure rate by risk level (test data)</h2>
+    <div id="bars"></div>
+    <small id="rNote"></small>
+  </section>
+
+  <details>
+    <summary>About the model</summary>
+    <p>{{ model_name }}, trained on public GitHub Actions runs (GADFPD, CC BY 4.0) combined with runs collected through the GitHub API. Test results:
+    {% for k, v in metrics.items() %}{{ k }} {{ '%.3f'|format(v) }}{% if not loop.last %}, {% endif %}{% endfor %}.
+    Failures are rare, so some alerts are false alarms.</p>
+  </details>
+</main>
+
+<script>
+const form = document.getElementById("form");
+const errBox = document.getElementById("error");
+const wfHas = document.getElementById("wfHas");
+const wfFields = document.getElementById("wfFields");
+const LEVELS = ["Low", "Medium", "High"];
+
+function syncWorkflow() {
+  wfFields.querySelectorAll("input").forEach(i => i.disabled = !wfHas.checked);
+  wfFields.style.opacity = wfHas.checked ? 1 : .5;
+}
+wfHas.addEventListener("change", syncWorkflow);
+syncWorkflow();
+
+function collect() {
+  const f = form.elements, num = n => f[n].value.trim() === "" ? null : Number(f[n].value);
+  const body = {
+    additions: num("additions"), deletions: num("deletions"), files_modified: num("files_modified"),
+    msg_len: num("msg_len"), is_merge: f.is_merge.checked, branch_is_main: f.branch_is_main.checked,
+    event: f.event.value, hour: num("hour"), dow: Number(f.dow.value),
+    repo_prior_runs: num("repo_prior_runs"), repo_prev: f.repo_prev.value,
+    repo_failures_last10: num("repo_failures_last10"), wf_has_history: wfHas.checked
+  };
+  if (wfHas.checked) {
+    body.wf_prior_runs = num("wf_prior_runs"); body.wf_prev = f.wf_prev.value;
+    body.wf_failures_last10 = num("wf_failures_last10");
+  }
+  return body;
+}
+
+function showError(msg) {
+  document.getElementById("result").style.display = "none";
+  errBox.textContent = msg; errBox.style.display = "block";
+}
+
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+  errBox.style.display = "none";
+  const btn = document.getElementById("go"); btn.disabled = true;
+  try {
+    const res = await fetch("/predict", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(collect())});
+    const out = await res.json();
+    if (!res.ok) { showError(out.error || "The server could not classify this run."); return; }
+    render(out);
+  } catch (err) {
+    showError("Could not reach the server. Check that the Flask app is running.");
+  } finally { btn.disabled = false; }
+});
+
+function render(o) {
+  const pct = (x, d = 0) => (x * 100).toFixed(d) + "%";
+  document.getElementById("rLevel").textContent = o.risk_level;
+  document.getElementById("rClass").textContent = o.predicted_failure ? "Likely to fail" : "Likely to succeed";
+  document.getElementById("rScore").textContent = pct(o.probability);
+  let t = "";
+  if (o.observed_failure_rate != null) {
+    t = `In the held-out test data, runs at this risk level failed ${pct(o.observed_failure_rate, 1)} of the time.`;
+    if (o.overall_failure_rate != null) t += ` Across all test runs the failure rate was ${pct(o.overall_failure_rate, 1)}.`;
+  }
+  document.getElementById("rText").textContent = t;
+  const bars = document.getElementById("bars"); bars.innerHTML = "";
+  const max = Math.max(...LEVELS.map(l => o.risk_rates[l]), 0.01);
+  LEVELS.forEach(l => {
+    const row = document.createElement("div");
+    row.className = "bar" + (l === o.risk_level ? " sel" : "");
+    row.innerHTML = `<span>${l}</span><div class="track"><div class="fill" style="width:${o.risk_rates[l] / max * 100}%"></div></div><span>${pct(o.risk_rates[l], 1)}</span>`;
+    bars.appendChild(row);
+  });
+  document.getElementById("rNote").textContent =
+    `The model risk score ranks runs by risk. It is not a literal chance of failure, because the model was trained with class weights. A run is classified as likely to fail at a score of ${pct(o.threshold)} or higher. Model: ${o.model}.`;
+  document.getElementById("result").style.display = "block";
+}
+</script>
+</body>
+</html>
