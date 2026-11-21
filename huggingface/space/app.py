@@ -2,6 +2,7 @@ import os
 
 import gradio as gr
 import joblib
+import numpy as np
 from huggingface_hub import hf_hub_download
 
 from ci_utils import event_choices, predict
@@ -319,7 +320,7 @@ METHOD_HTML = (
     f'<li>Failures are fairly rare. At the chosen threshold the model finds about {fail_rec} of them, so it misses some failures and raises some false alarms.</li>'
     '<li>Most of the signal comes from run history. A brand new repository or workflow is judged mainly on change size and trigger.</li>'
     '<li>The failure rate differs between the two data sources, and repositories change over time, so the model should be retrained periodically.</li>'
-    '<li>The score ranks runs. It is not a literal probability of failure, because of the class weights.</li>'
+    '<li>The displayed failure probability is calibrated on the time-ordered validation split. It is an estimate, not a guarantee, and may drift as repositories change.</li>'
     '</ul></div></div>'
 )
 
@@ -344,11 +345,11 @@ def result_html(o):
         f'<div class="lvl">{o["risk_level"]} risk</div>'
         f'<div class="meter"><div class="track"><i class="thr" style="left:{o["threshold"] * 100}%"></i>'
         f'<i class="mark" style="left:{mark}%"></i></div><div class="scale"><span>0%</span><span>100%</span></div></div>'
-        f'<div class="kv"><div><span>Model risk score</span><strong>{pct(o["probability"])}</strong></div>'
+        f'<div class="kv"><div><span>Estimated failure probability</span><strong>{pct(o["probability"])}</strong></div>'
         f'<div><span>Flagged at</span><strong>{pct(o["threshold"])}</strong></div></div>'
         f'<p class="sub">{text}</p>{bars}'
-        f'<p class="note">The score ranks runs by risk. It is not a literal chance of failure, because the model was trained '
-        f'with class weights. Runs scoring {pct(o["threshold"])} or higher are flagged. Model: {o["model"]}.</p></div>'
+        f'<p class="note">This probability is calibrated using a held-out, time-ordered validation split to correct the class-weighted model scores. '
+        f'It is an estimate, not a guarantee. Runs at or above {pct(o["threshold"])} are flagged. Model: {o["model"]}.</p></div>'
     )
 
 
@@ -367,7 +368,26 @@ def classify(additions, deletions, files_modified, msg_len, is_merge, branch_is_
     }
     try:
         out = predict(bundle, inputs)
-    except ValueError as e:
+        # Convert the class-weighted model score into a calibrated failure
+        # probability using the calibrator fitted on the time-ordered
+        # validation split during training.
+        raw_score = float(np.clip(out["probability"], 1e-6, 1 - 1e-6))
+        logit_score = np.log(raw_score / (1 - raw_score))
+        calibrated = float(
+            bundle["probability_calibrator"].predict_proba([[logit_score]])[0, 1]
+        )
+        out["probability"] = calibrated
+        out["threshold"] = float(bundle["threshold"])
+        out["predicted_failure"] = calibrated >= out["threshold"]
+        bands = bundle["risk_bands"]
+        if calibrated >= bands["high_cut"]:
+            out["risk_level"] = "High"
+        elif calibrated >= bands["low_cut"]:
+            out["risk_level"] = "Medium"
+        else:
+            out["risk_level"] = "Low"
+        out["observed_failure_rate"] = RATES.get(out["risk_level"])
+    except (ValueError, KeyError, AttributeError) as e:
         return current, f'<div class="ci"><div class="err" role="alert">{e}</div></div>'
     return result_html(out), ""
 

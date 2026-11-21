@@ -348,62 +348,66 @@ with tabs[1]:
     with form_col:
         err_slot = st.empty()
 
-        with st.container(key="grp_change"):
-            lc, rc = st.columns([170, 448])
-            lc.markdown(group_head("Change", "What the commit touches."), unsafe_allow_html=True)
-            with rc:
-                a, b = st.columns(2)
-                a.number_input("Lines added", min_value=0, step=1, key="additions")
-                b.number_input("Lines deleted", min_value=0, step=1, key="deletions")
-                a, b = st.columns(2)
-                a.number_input("Files changed", min_value=0, step=1, key="files_modified")
-                b.number_input("Commit message length (characters)", min_value=0, step=1, key="msg_len")
-                a, b = st.columns(2)
-                with a.container(key="tg_merge"):
-                    st.checkbox("Merge commit", key="is_merge")
-                with b.container(key="tg_main"):
-                    st.checkbox("Default branch (main or master)", key="branch_is_main")
-
-        with st.container(key="grp_trigger"):
-            lc, rc = st.columns([170, 448])
-            lc.markdown(group_head("Trigger", "What starts the run, and when."), unsafe_allow_html=True)
-            with rc:
-                a, b = st.columns(2)
-                a.selectbox("Event", EVENTS, key="event")
-                b.number_input("Hour (UTC)", min_value=0, max_value=23, step=1, key="hour")
-                a, b = st.columns(2)
-                a.selectbox("Day of week", DAYS, key="dow")
-
-        with st.container(key="grp_repo"):
-            lc, rc = st.columns([170, 448])
-            lc.markdown(group_head("Repository history", "How the repository behaved recently."), unsafe_allow_html=True)
-            with rc:
-                a, b = st.columns(2)
-                a.number_input("Earlier runs in the repository", min_value=0, step=1, key="repo_prior_runs")
-                b.number_input("Failures in the last 10 runs", min_value=0, max_value=10, step=1, key="repo_failures_last10")
-                st.radio("Outcome of the previous run", ["success", "failure"], horizontal=True, key="repo_prev")
-
-        with st.container(key="grp_workflow"):
-            lc, rc = st.columns([170, 448])
-            lc.markdown(group_head("Workflow history", "The same, for this workflow only."), unsafe_allow_html=True)
-            with rc:
-                with st.container(key="wf_toggle"):
-                    st.checkbox("This workflow has earlier runs", key="wf_has_history")
-                has_wf = st.session_state["wf_has_history"]
-                with st.container(key="wf_fields" if has_wf else "wf_fields_off"):
-                    a, b = st.columns(2)
-                    a.number_input("Earlier runs of this workflow", min_value=1, step=1, key="wf_prior_runs", disabled=not has_wf)
-                    b.number_input("Workflow failures in the last 10 runs", min_value=0, max_value=10, step=1,
-                                   key="wf_failures_last10", disabled=not has_wf)
-                    st.radio("Outcome of the workflow's previous run", ["success", "failure"], horizontal=True,
-                             key="wf_prev", disabled=not has_wf)
-
+        # Example presets remain outside the form because Streamlit does not
+        # allow ordinary callback buttons inside an st.form block.
         with st.container(key="actions", horizontal=True, horizontal_alignment="left", vertical_alignment="center", gap="small"):
-            go = st.button("Classify run", type="primary")
-            st.markdown("Or load an example:")
+            st.markdown("Load an example:")
             st.button("small change", type="tertiary", on_click=load_preset, args=("safe",))
             st.markdown(",")
             st.button("large risky merge", type="tertiary", on_click=load_preset, args=("risky",))
+
+        with st.form("ci_prediction_form"):
+            with st.container(key="grp_change"):
+                lc, rc = st.columns([170, 448])
+                lc.markdown(group_head("Change", "What the commit touches."), unsafe_allow_html=True)
+                with rc:
+                    a, b = st.columns(2)
+                    a.number_input("Lines added", min_value=0, step=1, key="additions")
+                    b.number_input("Lines deleted", min_value=0, step=1, key="deletions")
+                    a, b = st.columns(2)
+                    a.number_input("Files changed", min_value=0, step=1, key="files_modified")
+                    b.number_input("Commit message length (characters)", min_value=0, step=1, key="msg_len")
+                    a, b = st.columns(2)
+                    with a.container(key="tg_merge"):
+                        st.checkbox("Merge commit", key="is_merge")
+                    with b.container(key="tg_main"):
+                        st.checkbox("Default branch (main or master)", key="branch_is_main")
+
+            with st.container(key="grp_trigger"):
+                lc, rc = st.columns([170, 448])
+                lc.markdown(group_head("Trigger", "What starts the run, and when."), unsafe_allow_html=True)
+                with rc:
+                    a, b = st.columns(2)
+                    a.selectbox("Event", EVENTS, key="event")
+                    b.number_input("Hour (UTC)", min_value=0, max_value=23, step=1, key="hour")
+                    a, b = st.columns(2)
+                    a.selectbox("Day of week", DAYS, key="dow")
+
+            with st.container(key="grp_repo"):
+                lc, rc = st.columns([170, 448])
+                lc.markdown(group_head("Repository history", "How the repository behaved recently."), unsafe_allow_html=True)
+                with rc:
+                    a, b = st.columns(2)
+                    a.number_input("Earlier runs in the repository", min_value=0, step=1, key="repo_prior_runs")
+                    b.number_input("Failures in the last 10 runs", min_value=0, max_value=10, step=1, key="repo_failures_last10")
+                    st.radio("Outcome of the previous run", ["success", "failure"], horizontal=True, key="repo_prev")
+
+            with st.container(key="grp_workflow"):
+                lc, rc = st.columns([170, 448])
+                lc.markdown(group_head("Workflow history", "The same, for this workflow only."), unsafe_allow_html=True)
+                with rc:
+                    with st.container(key="wf_toggle"):
+                        st.checkbox("This workflow has earlier runs", key="wf_has_history")
+                    has_wf = st.session_state["wf_has_history"]
+                    with st.container(key="wf_fields" if has_wf else "wf_fields_off"):
+                        a, b = st.columns(2)
+                        a.number_input("Earlier runs of this workflow", min_value=1, step=1, key="wf_prior_runs", disabled=not has_wf)
+                        b.number_input("Workflow failures in the last 10 runs", min_value=0, max_value=10, step=1,
+                                       key="wf_failures_last10", disabled=not has_wf)
+                        st.radio("Outcome of the workflow's previous run", ["success", "failure"], horizontal=True,
+                                 key="wf_prev", disabled=not has_wf)
+
+            go = st.form_submit_button("Classify run", type="primary")
 
     if go:
         s = st.session_state

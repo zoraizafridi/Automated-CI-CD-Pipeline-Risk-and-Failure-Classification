@@ -17,7 +17,7 @@ Built for CT-378 Machine Learning (semester project). Live demo: see the Space l
 
 ## Intended use
 A developer or release manager wants an early warning before spending CI time or deploying.
-It ranks runs for triage. It is **not** a literal probability of failure, because the model was trained with class weights.
+The class-weighted model output is calibrated with sigmoid (Platt) scaling on the time-ordered validation split before it is shown as an estimated failure probability. This is an estimate, not a guarantee; calibration can drift as repositories and workflows change.
 
 ## Files
 - `ci_failure_model.joblib`: a dict with the fitted scikit-learn `Pipeline` (`pipeline`), the decision `threshold`, `features`, `risk_bands`, `risk_rates` and `test_metrics`.
@@ -31,13 +31,23 @@ from huggingface_hub import hf_hub_download
 repo = "zoraizafridi/ci-failure-risk"
 bundle = joblib.load(hf_hub_download(repo, "ci_failure_model.joblib"))
 # also download ci_utils.py next to your script, then:
-from ci_utils import predict
-print(predict(bundle, {
+import numpy as np
+from ci_utils import make_features
+
+inputs = {
     "additions": 40, "deletions": 10, "files_modified": 3, "msg_len": 60,
     "is_merge": False, "branch_is_main": True, "event": "push", "hour": 12, "dow": 2,
     "repo_prior_runs": 200, "repo_prev": "success", "repo_failures_last10": 1,
     "wf_has_history": True, "wf_prior_runs": 100, "wf_prev": "success", "wf_failures_last10": 1,
-}))
+}
+X = make_features(inputs, bundle["features"])
+raw_score = float(bundle["pipeline"].predict_proba(X)[:, 1][0])
+raw_score = np.clip(raw_score, 1e-6, 1 - 1e-6)
+logit_score = np.log(raw_score / (1 - raw_score))
+failure_probability = float(
+    bundle["probability_calibrator"].predict_proba([[logit_score]])[0, 1]
+)
+print(f"Estimated failure probability: {failure_probability:.1%}")
 ```
 Requires `scikit-learn==1.9.1`, `numpy==2.5.4`, `pandas==3.0.6`, `joblib==1.6.0` (Python 3.12). Other versions may fail to unpickle.
 
@@ -56,10 +66,10 @@ Selected model: Hist Gradient Boosting (class-weighted). 17 features: change siz
 |---|---|---|---|---|---|
 | 0.689 | 0.447 | 0.545 | 0.379 | 0.845 | 0.504 |
 
-Decision threshold 0.86. Observed test failure rate by risk level: Low 2.1%, Medium 14.9%, High 54.5% (overall 13.0%).
+The notebook regenerates the calibrated decision threshold, held-out test metrics and observed test failure rates by risk level whenever the model is retrained. The values in the model artifact are authoritative for the deployed version.
 
 ## Limitations
-- Failures are fairly rare, and at the chosen threshold the model finds about 38% of them, so it misses some failures and raises some false alarms.
+- Failures are fairly rare, so the selected threshold can produce both false alarms and missed failures. Check the regenerated held-out test metrics in the model artifact.
 - Most of the signal comes from run history; a brand new repository or workflow is predicted mainly from change size and trigger.
 - GADFPD covers 2016-08-08 to 2026-04-18 and the own runs cover 2026-04-19 to 2026-11-20. The failure rate differs between the two, and repositories change over time, so the model can drift and should be retrained periodically.
 - Own-collected runs were sampled across days, so their "last 10 runs" history is not strictly consecutive.
