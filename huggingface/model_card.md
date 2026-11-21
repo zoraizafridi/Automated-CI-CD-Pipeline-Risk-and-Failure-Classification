@@ -43,24 +43,24 @@ Requires `scikit-learn==1.9.1`, `numpy==2.5.4`, `pandas==3.0.6`, `joblib==1.6.0`
 
 ## Training data
 1. **GADFPD**, GitHub Actions CI/CD Failure Prediction Dataset, Faruna, J. et al. (2026), Mendeley Data V1, DOI 10.17632/mggwn7rj9f.1, licence CC BY 4.0, published 30 June 2026.
-2. **Own collection**: 8,107 workflow runs from 14 public repositories, 2026-10-20 to 2026-11-20, collected with the GitHub REST API (`collect_binary_runs.py`). Repository and actor names are hashed; no commit message text is stored.
+2. **Own collection**: 23,818 workflow runs from 14 public repositories, 2026-04-19 to 2026-11-20 (starting the day after GADFPD ends), collected with the GitHub REST API (`collect_binary_runs.py`). Repository and actor names are hashed; no commit message text is stored.
 
 Only runs with a clear success or failure outcome and a first attempt are kept. Runs are sorted by time and split 70/15/15 into train, validation and test.
 
 ## Model
 Selected by validation macro-F1 from six tuned algorithms (Logistic Regression, Decision Tree, KNN, Linear SVM, Random Forest, Histogram Gradient Boosting) using `RandomizedSearchCV` with `TimeSeriesSplit(5)`.
-Selected model: Logistic Regression. 17 features: change size, merge flag, hour, weekday, branch, trigger event and run history (previous outcome, failure rate over the last 10 runs, number of earlier runs) per repository and per workflow.
+Selected model: Hist Gradient Boosting (class-weighted). 17 features: change size, merge flag, hour, weekday, branch, trigger event and run history (previous outcome, failure rate over the last 10 runs, number of earlier runs) per repository and per workflow.
 
 ## Evaluation (held-out, time-ordered test set, scored once)
 | macro-F1 | failure F1 | failure precision | failure recall | ROC-AUC | PR-AUC |
 |---|---|---|---|---|---|
-| 0.758 | 0.551 | 0.520 | 0.586 | 0.902 | 0.576 |
+| 0.689 | 0.447 | 0.545 | 0.379 | 0.845 | 0.504 |
 
-Observed test failure rate by risk level: Low 1.0%, Medium 6.6%, High 52.0% (overall 6.7%).
+Decision threshold 0.86. Observed test failure rate by risk level: Low 2.1%, Medium 14.9%, High 54.5% (overall 13.0%).
 
 ## Limitations
-- Failures are rare, so some alerts are false alarms.
+- Failures are fairly rare, and at the chosen threshold the model finds about 38% of them, so it misses some failures and raises some false alarms.
 - Most of the signal comes from run history; a brand new repository or workflow is predicted mainly from change size and trigger.
-- The two data sources cover different periods (GADFPD was published 30 June 2026; own runs are from 20 Oct to 20 Nov 2026), and repositories change over time, so the model can drift and should be retrained periodically.
+- GADFPD covers 2016-08-08 to 2026-04-18 and the own runs cover 2026-04-19 to 2026-11-20. The failure rate differs between the two, and repositories change over time, so the model can drift and should be retrained periodically.
 - Own-collected runs were sampled across days, so their "last 10 runs" history is not strictly consecutive.
-- Two of the 16 targeted repositories (kubernetes/kubernetes, golang/go) returned no runs and are not in the data.
+- Two of the 16 targeted repositories are not in the data: kubernetes/kubernetes returned no runs, and golang/go returned only 7, which were removed.
