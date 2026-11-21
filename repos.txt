@@ -1,0 +1,16 @@
+facebook/react
+microsoft/TypeScript
+vercel/next.js
+kubernetes/kubernetes
+golang/go
+rust-lang/rust
+apache/spark
+django/django
+electron/electron
+godotengine/godot
+hashicorp/terraform
+prometheus/prometheus
+apache/airflow
+huggingface/transformers
+nodejs/node
+angular/angular

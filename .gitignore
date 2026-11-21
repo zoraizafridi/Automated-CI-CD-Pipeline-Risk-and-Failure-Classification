@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+data/final_research_dataset_MASTER.csv
+data/cleaned_runs.csv.gz
