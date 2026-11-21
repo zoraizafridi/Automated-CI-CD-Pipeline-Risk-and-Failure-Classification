@@ -3,132 +3,304 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CI/CD Risk and Failure Classification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<title>CI Risk · CI/CD Risk and Failure Classification</title>
 <style>
-  :root{--ink:#1c1f23;--muted:#5d6670;--line:#d9dee3;--bg:#fff;--panel:#f3f5f7;--blue:#1f4e79;--low:#3f8f5f;--med:#c98a1b;--high:#b83b4b}
+  :root{--bg:#050505;--panel:#0b0612;--field:#12091f;--line:#2a1347;--amethyst:#3B0A6B;--ink:#f3eefc;--muted:#a99bc0;--accent:#00E5FF;--accent-ink:#050505;
+        --low:#35e0a1;--med:#ffc857;--high:#ff5c7a;--lit:#a66bff;--serif:"Cormorant Garamond","Playfair Display","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  main{max-width:720px;margin:0 auto;padding:32px 20px 64px}
-  h1{font-size:1.7rem;line-height:1.2;margin:0 0 8px}
-  h2{font-size:1rem;margin:0 0 12px}
-  p.lead{color:var(--muted);margin:0 0 24px}
-  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 16px;padding:16px;background:var(--panel)}
-  legend{font-weight:600;padding:0 6px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 16px}
-  label{display:block;font-size:.9rem;color:var(--muted)}
-  input[type=number],select{width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:4px;font:inherit;color:var(--ink);background:#fff}
-  .check{display:flex;align-items:center;gap:8px;color:var(--ink);margin-top:22px}
-  .check input{width:auto;margin:0}
-  .radios{display:flex;gap:16px;margin-top:6px;color:var(--ink)}
-  .radios label{display:flex;align-items:center;gap:6px;color:var(--ink)}
-  :focus-visible{outline:3px solid #7fb0e0;outline-offset:2px}
-  button{background:var(--blue);color:#fff;border:0;border-radius:4px;padding:10px 20px;font:inherit;font-weight:600;cursor:pointer}
-  button:disabled{opacity:.6;cursor:wait}
-  #error{display:none;margin-top:16px;padding:12px 14px;border:1px solid var(--high);border-left-width:5px;border-radius:4px;color:#7a1f2b;background:#fdf1f2}
-  #result{display:none;margin-top:28px;border-top:1px solid var(--line);padding-top:20px}
-  .summary{display:flex;flex-wrap:wrap;gap:12px 32px;margin-bottom:12px}
-  .summary div span{display:block;color:var(--muted);font-size:.85rem}
-  .summary div strong{font-size:1.5rem}
-  #bars{margin:16px 0 8px}
-  .bar{display:grid;grid-template-columns:70px 1fr 56px;align-items:center;gap:10px;margin:8px 0;font-size:.9rem}
-  .track{background:var(--panel);height:22px;border-radius:3px;overflow:hidden}
-  .fill{height:100%;background:#b8c4d0}
-  .bar.sel .fill{background:var(--blue)}
-  .bar.sel{font-weight:700}
-  small{color:var(--muted);display:block;margin-top:12px}
-  details{margin-top:28px;color:var(--muted)}
+  html{color-scheme:dark}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;background:radial-gradient(760px 560px at 84% 4%,rgba(59,10,107,.95),transparent 68%),radial-gradient(380px 280px at 97% 20%,rgba(0,229,255,.17),transparent 70%),radial-gradient(660px 440px at -4% 102%,rgba(59,10,107,.6),transparent 70%);pointer-events:none;z-index:-1}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+  nav{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{max-width:1120px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:32px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.14em;font-size:.82rem;text-decoration:none;white-space:nowrap}
+  .tabs{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none}
+  .tabs a{position:relative;padding:22px 14px;color:var(--muted);text-decoration:none;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
+  .tabs a:hover{color:var(--ink)}
+  .tabs a[aria-current=page]{color:var(--ink)}
+  .tabs a[aria-current=page]::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;background:var(--accent)}
+
+  .page{display:none;max-width:1120px;margin:0 auto;padding:48px 24px 96px}
+  .hero{position:relative;min-height:540px;padding-top:36px}
+  .hero .copy{position:relative;z-index:1}
+  .ribbons{overflow:visible;position:absolute;right:-60px;top:-30px;width:min(680px,62%);height:auto;pointer-events:none}
+  .ribbons .draw{stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 2.4s .15s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @media (max-width:760px){.ribbons{opacity:.45;width:110%;right:-30%}.facts{grid-template-columns:1fr;row-gap:20px}}
+  .page.on{display:block}
+  h1{font-family:var(--serif);font-size:clamp(3rem,7vw,5.6rem);line-height:.98;letter-spacing:-.02em;font-weight:400;margin:0 0 22px;max-width:11ch}
+  h1 em{font-style:italic;color:var(--lit)}
+  h2{font-family:var(--serif);font-size:2.2rem;letter-spacing:-.01em;font-weight:500;margin:0 0 8px}
+  .lead{font-size:1.1rem;color:var(--muted);max-width:44ch;margin:0 0 32px}
+  .btn{display:inline-block;background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:99px;padding:13px 28px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;box-shadow:0 0 28px rgba(0,229,255,.28);transition:box-shadow .2s}
+  .btn:hover{box-shadow:0 0 40px rgba(0,229,255,.5)}
+  .btn.ghost{background:transparent;color:var(--accent);box-shadow:none}
+  .btn.ghost:hover{background:rgba(0,229,255,.1);box-shadow:0 0 28px rgba(0,229,255,.25)}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .link{color:var(--accent);background:none;border:0;padding:0;font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+  /* overview */
+  .ladder{margin:40px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:40px}
+  .rung{border-top:1px solid var(--line);padding:22px 0 8px}
+  .rung .lab{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.9rem}
+  .rung .lab i{width:8px;height:8px;border-radius:50%}
+  .rung b{display:block;margin:10px 0 14px;font-size:clamp(2.6rem,5vw,3.8rem);font-weight:300;letter-spacing:-.03em;line-height:1;color:var(--ink);font-variant-numeric:lining-nums tabular-nums}
+  .rung .trk{height:4px;border-radius:4px;background:var(--line);overflow:hidden}
+  .rung .trk i{display:block;height:100%;border-radius:4px;min-width:4px}
+  .rung .cap{display:block;margin-top:10px;color:var(--muted);font-size:.85rem}
+  .ladder-cap{color:var(--muted);margin:16px 0 0;max-width:62ch;font-size:.92rem}
+  .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:40px;margin-top:48px}
+  .facts>div{padding:22px 0 0;border-top:1px solid var(--line)}
+  .facts .n{color:var(--accent);font-size:.8rem;letter-spacing:.14em;display:block;margin-bottom:12px}
+  .facts h3{font-family:var(--serif);font-size:1.45rem;font-weight:500;margin:0 0 6px}.facts p{margin:0;color:var(--muted)}
+
+  /* classify */
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:56px;align-items:start}
+  .group{display:grid;grid-template-columns:170px 1fr;gap:8px 28px;padding:26px 0;border-top:1px solid var(--line)}
+  .group h3{margin:0;font-family:var(--serif);font-size:1.35rem;font-weight:500}.group p{margin:2px 0 0;color:var(--muted);font-size:.87rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
+  label{display:block;font-size:.85rem;color:var(--muted)}
+  input[type=number],select{width:100%;margin-top:6px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:.95rem;color:var(--ink);background:var(--field)}
+  input[type=number]:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,.15);outline:0}
+  input[aria-invalid=true]{border-color:var(--high)}
+  .toggle{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:.92rem;padding-top:22px}
+  .toggle input{accent-color:var(--accent);width:17px;height:17px;margin:0}
+  .seg{display:inline-flex;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--field)}
+  .seg label{margin:0;cursor:pointer}.seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg span{display:block;padding:9px 16px;font-size:.9rem}
+  .seg input:checked+span{background:var(--amethyst);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 1px var(--accent)}
+  .seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:-2px}
+  #wfFields{transition:opacity .2s}
+  .actions{border-top:1px solid var(--line);padding-top:24px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+  .actions .presets{color:var(--muted);font-size:.9rem}
+  #error{display:none;margin-bottom:18px;padding:12px 14px;border-left:3px solid var(--high);background:color-mix(in srgb,var(--high) 10%,var(--panel));border-radius:0 8px 8px 0}
+  aside{position:sticky;top:84px;border:1px solid rgba(0,229,255,.22);background:linear-gradient(165deg,rgba(59,10,107,.45),rgba(5,5,5,.75) 60%);border-radius:16px;padding:26px;box-shadow:0 0 60px rgba(59,10,107,.35)}
+  .empty{color:var(--muted)}.empty strong{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:4px}
+  .verdict{font-family:var(--serif);font-size:2.5rem;line-height:1.05;font-weight:500;letter-spacing:-.01em;margin:0;display:flex;align-items:center;gap:12px}
+  .dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c,var(--muted))}
+  .lvl{margin-top:4px;color:var(--c)}
+  .meter{margin:30px 0 8px}
+  .track{position:relative;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--low),var(--med) 55%,var(--high))}
+  .mark{position:absolute;top:-6px;width:4px;height:20px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 3px var(--panel);transform:translateX(-50%);transition:left .5s cubic-bezier(.2,.8,.2,1)}
+  .thr{position:absolute;top:-4px;height:16px;border-left:2px dashed var(--ink);opacity:.5}
+  .scale{display:flex;justify-content:space-between;color:var(--muted);font-size:.78rem;margin-top:8px}
+  .kv{display:flex;gap:32px;margin:18px 0 0}.kv span{display:block;color:var(--muted);font-size:.8rem}.kv strong{font-size:1.4rem;font-weight:500}
+  .sub{color:var(--muted);font-size:.88rem;margin:22px 0 4px}
+  .bar{display:grid;grid-template-columns:64px 1fr 52px;align-items:center;gap:10px;margin:9px 0;font-size:.88rem;color:var(--muted)}
+  .bar.sel{color:var(--ink);font-weight:600}
+  .bt{height:8px;border-radius:99px;background:var(--field);overflow:hidden}
+  .fill{height:100%;width:0;border-radius:99px;background:var(--line);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  .bar.sel .fill{background:var(--c)}
+  .note{color:var(--muted);font-size:.8rem;margin:16px 0 0}
+
+  /* model / data / method */
+  .prose{max-width:68ch}.prose p,.prose li{color:var(--muted)}.prose ul{padding-left:18px}.prose strong{color:var(--ink);font-weight:600}
+  table{border-collapse:collapse;width:100%;max-width:760px;margin:20px 0 40px}
+  th,td{text-align:left;padding:14px 16px 14px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:500;color:var(--muted);font-size:.85rem}
+  td.v{font-size:1.3rem;font-weight:500;white-space:nowrap}td.d{color:var(--muted)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+  @media (max-width:900px){.layout{grid-template-columns:1fr;gap:32px}aside{position:static}.group{grid-template-columns:1fr}.facts,.split{grid-template-columns:1fr}.nav{gap:12px}.brand span{display:none}}
+  @media (max-width:760px){.ladder{grid-template-columns:1fr;row-gap:6px}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}.ribbons .draw{animation:none;stroke-dashoffset:0}}
 </style>
 </head>
 <body>
-<main>
-  <h1>CI/CD pipeline risk and failure classification</h1>
-  <p class="lead">Describe a GitHub Actions run before it starts. The model classifies it as likely to fail or succeed and gives it a Low, Medium or High risk level.</p>
+<nav><div class="nav">
+  <a class="brand" href="#overview">
+    <svg width="30" height="14" viewBox="0 0 30 14" aria-hidden="true"><path d="M5 7h20" stroke="currentColor" stroke-opacity=".35" stroke-width="2"/><circle cx="5" cy="7" r="4" fill="var(--low)"/><circle cx="15" cy="7" r="4" fill="var(--med)"/><circle cx="25" cy="7" r="4" fill="var(--high)"/></svg><span>CI RISK</span>
+  </a>
+  <div class="tabs" role="navigation" aria-label="Pages">
+    <a href="#overview">Overview</a><a href="#classify">Classify</a><a href="#model">Model</a><a href="#data">Data</a><a href="#method">Method</a>
+  </div>
+</div></nav>
 
-  <form id="form" novalidate>
-    <fieldset><legend>Change</legend>
-      <div class="grid">
-        <label>Lines added<input type="number" name="additions" min="0" step="1" value="40"></label>
-        <label>Lines deleted<input type="number" name="deletions" min="0" step="1" value="10"></label>
-        <label>Files changed<input type="number" name="files_modified" min="0" step="1" value="3"></label>
-        <label>Commit message length (characters)<input type="number" name="msg_len" min="0" step="1" value="60"></label>
-        <label class="check"><input type="checkbox" name="is_merge"> Merge commit</label>
-        <label class="check"><input type="checkbox" name="branch_is_main" checked> Default branch (main or master)</label>
-      </div>
-    </fieldset>
-
-    <fieldset><legend>Trigger</legend>
-      <div class="grid">
-        <label>Event
-          <select name="event">{% for e in events %}<option value="{{ e }}"{% if e == 'push' %} selected{% endif %}>{{ e }}</option>{% endfor %}</select>
-        </label>
-        <label>Hour (UTC)<input type="number" name="hour" min="0" max="23" step="1" value="12"></label>
-        <label>Day of week
-          <select name="dow">
-            {% for d in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"] %}<option value="{{ loop.index0 }}"{% if loop.index0 == 2 %} selected{% endif %}>{{ d }}</option>{% endfor %}
-          </select>
-        </label>
-      </div>
-    </fieldset>
-
-    <fieldset><legend>Repository history</legend>
-      <div class="grid">
-        <label>Earlier runs in the repository<input type="number" name="repo_prior_runs" min="0" step="1" value="200"></label>
-        <label>Failures in the last 10 runs<input type="number" name="repo_failures_last10" min="0" max="10" step="1" value="1"></label>
-        <div><label>Outcome of the previous run</label>
-          <div class="radios"><label><input type="radio" name="repo_prev" value="success" checked> success</label><label><input type="radio" name="repo_prev" value="failure"> failure</label></div>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset><legend>Workflow history</legend>
-      <label class="check" style="margin-top:0"><input type="checkbox" name="wf_has_history" id="wfHas" checked> This workflow has earlier runs</label>
-      <div class="grid" id="wfFields" style="margin-top:12px">
-        <label>Earlier runs of this workflow<input type="number" name="wf_prior_runs" min="1" step="1" value="100"></label>
-        <label>Workflow failures in the last 10 runs<input type="number" name="wf_failures_last10" min="0" max="10" step="1" value="1"></label>
-        <div><label>Outcome of the workflow's previous run</label>
-          <div class="radios"><label><input type="radio" name="wf_prev" value="success" checked> success</label><label><input type="radio" name="wf_prev" value="failure"> failure</label></div>
-        </div>
-      </div>
-    </fieldset>
-
-    <button type="submit" id="go">Classify run</button>
-  </form>
-
-  <div id="error" role="alert"></div>
-
-  <section id="result" aria-live="polite">
-    <div class="summary">
-      <div><span>Risk level</span><strong id="rLevel"></strong></div>
-      <div><span>Classification</span><strong id="rClass"></strong></div>
-      <div><span>Model risk score</span><strong id="rScore"></strong></div>
+<!-- Overview -->
+<main class="page" id="p-overview">
+  <div class="hero">
+    <svg class="ribbons" viewBox="0 0 640 560" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="rg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3B0A6B"/><stop offset=".55" stop-color="#a66bff"/><stop offset="1" stop-color="#00E5FF"/></linearGradient>
+        <filter id="rb" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="16"/></filter>
+      </defs>
+      <g filter="url(#rb)" opacity=".55" stroke="url(#rg)" stroke-width="22" stroke-linecap="round">
+        <path d="M40 520C170 470 240 290 350 220S540 90 620 40"/><path d="M0 400C150 410 260 320 310 220S450 100 600 140"/>
+      </g>
+      <g stroke="url(#rg)" stroke-linecap="round">
+        <path class="draw" stroke-width="3" d="M40 520C170 470 240 290 350 220S540 90 620 40"/>
+        <path class="draw" stroke-width="2" d="M0 400C150 410 260 320 310 220S450 100 600 140"/>
+        <path class="draw" stroke-width="1.5" d="M90 560C220 520 350 470 420 350S520 220 630 260"/>
+        <path class="draw" stroke-width="1" d="M0 300C120 340 230 260 290 150S410 30 480 0"/>
+      </g>
+      <g fill="#00E5FF"><circle cx="350" cy="220" r="5"/><circle cx="310" cy="220" r="3.5" fill="#a66bff"/><circle cx="420" cy="350" r="4"/><circle cx="600" cy="140" r="3.5"/></g>
+    </svg>
+    <div class="copy">
+      <h1>Will this run <em>break</em> the build?</h1>
+      <p class="lead">Describe a GitHub Actions run before it starts. The model classifies it as likely to fail or succeed and rates the risk as Low, Medium or High.</p>
+      <a class="btn" href="#classify">Classify a run</a>
     </div>
-    <p id="rText"></p>
-    <h2>Failure rate by risk level (test data)</h2>
-    <div id="bars"></div>
-    <small id="rNote"></small>
-  </section>
+  </div>
 
-  <details>
-    <summary>About the model</summary>
-    <p>{{ model_name }}, trained on public GitHub Actions runs (GADFPD, CC BY 4.0) combined with runs collected through the GitHub API. Test results:
-    {% for k, v in metrics.items() %}{{ k }} {{ '%.3f'|format(v) }}{% if not loop.last %}, {% endif %}{% endfor %}.
-    Failures are rare, so some alerts are false alarms.</p>
-  </details>
+  <div class="ladder" id="ladder"></div>
+  <p class="ladder-cap">Observed in held-out test data, where <span data-bind="overall"></span> of all runs failed. Bars show each rate out of 100%.</p>
+
+  <div class="facts">
+    <div><span class="n">01</span><h3>What you enter</h3><p>The size of the change, what triggers the run, and how the repository and workflow have behaved lately.</p></div>
+    <div><span class="n">02</span><h3>What you get</h3><p>A verdict, a risk level and a score, shown against the threshold at which runs are flagged.</p></div>
+    <div><span class="n">03</span><h3>How far to trust it</h3><p>It ranks runs for triage. It catches roughly <span data-bind="failrec"></span> of failures, so treat it as an early warning, not a guarantee.</p></div>
+  </div>
+</main>
+
+<!-- Classify -->
+<main class="page" id="p-classify">
+  <h2>Classify a run</h2>
+  <p class="lead" style="margin-bottom:32px">Fill in what you know about the run, then select Classify run.</p>
+  <div class="layout">
+    <div>
+      <div id="error" role="alert"></div>
+      <form id="form" novalidate>
+        <div class="group"><div><h3>Change</h3><p>What the commit touches.</p></div>
+          <div class="grid">
+            <label>Lines added<input type="number" name="additions" min="0" step="1" value="40"></label>
+            <label>Lines deleted<input type="number" name="deletions" min="0" step="1" value="10"></label>
+            <label>Files changed<input type="number" name="files_modified" min="0" step="1" value="3"></label>
+            <label>Commit message length (characters)<input type="number" name="msg_len" min="0" step="1" value="60"></label>
+            <label class="toggle"><input type="checkbox" name="is_merge"> Merge commit</label>
+            <label class="toggle"><input type="checkbox" name="branch_is_main" checked> Default branch (main or master)</label>
+          </div></div>
+        <div class="group"><div><h3>Trigger</h3><p>What starts the run, and when.</p></div>
+          <div class="grid">
+            <label>Event<select name="event"><option value="push" selected>push</option><option value="pull_request">pull_request</option><option value="schedule">schedule</option><option value="workflow_dispatch">workflow_dispatch</option></select></label>
+            <label>Hour (UTC)<input type="number" name="hour" min="0" max="23" step="1" value="12"></label>
+            <label>Day of week<select name="dow"><option value="0">Monday</option><option value="1">Tuesday</option><option value="2" selected>Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option></select></label>
+          </div></div>
+        <div class="group"><div><h3>Repository history</h3><p>How the repository behaved recently.</p></div>
+          <div class="grid">
+            <label>Earlier runs in the repository<input type="number" name="repo_prior_runs" min="0" step="1" value="200"></label>
+            <label>Failures in the last 10 runs<input type="number" name="repo_failures_last10" min="0" max="10" step="1" value="1"></label>
+            <div><label>Outcome of the previous run</label><div class="seg"><label><input type="radio" name="repo_prev" value="success" checked><span>success</span></label><label><input type="radio" name="repo_prev" value="failure"><span>failure</span></label></div></div>
+          </div></div>
+        <div class="group"><div><h3>Workflow history</h3><p>The same, for this workflow only.</p></div>
+          <div>
+            <label class="toggle" style="padding-top:0"><input type="checkbox" name="wf_has_history" id="wfHas" checked> This workflow has earlier runs</label>
+            <div class="grid" id="wfFields" style="margin-top:14px">
+              <label>Earlier runs of this workflow<input type="number" name="wf_prior_runs" min="1" step="1" value="100"></label>
+              <label>Workflow failures in the last 10 runs<input type="number" name="wf_failures_last10" min="0" max="10" step="1" value="1"></label>
+              <div><label>Outcome of the workflow's previous run</label><div class="seg"><label><input type="radio" name="wf_prev" value="success" checked><span>success</span></label><label><input type="radio" name="wf_prev" value="failure"><span>failure</span></label></div></div>
+            </div>
+          </div></div>
+        <div class="actions">
+          <button type="submit" class="btn" id="go">Classify run</button>
+          <span class="presets">Or load an example: <button type="button" class="link" data-preset="safe">small change</button>, <button type="button" class="link" data-preset="risky">large risky merge</button></span>
+        </div>
+      </form>
+    </div>
+    <aside aria-live="polite" id="panel">
+      <div class="empty" id="empty"><strong>No result yet</strong>The verdict and risk score appear here.</div>
+      <div id="result" hidden>
+        <p class="verdict"><i class="dot"></i><span id="rClass"></span></p>
+        <div class="lvl" id="rLevel"></div>
+        <div class="meter"><div class="track"><i class="thr" id="thr"></i><i class="mark" id="mark"></i></div><div class="scale"><span>0%</span><span>100%</span></div></div>
+        <div class="kv"><div><span>Model risk score</span><strong id="rScore"></strong></div><div><span>Flagged at</span><strong id="rThr"></strong></div></div>
+        <p class="sub" id="rText"></p>
+        <div id="bars"></div>
+        <p class="note" id="rNote"></p>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<!-- Model -->
+<main class="page" id="p-model">
+  <div class="prose"><h2>How well it works</h2>
+  <p><span data-bind="model"></span>, scored once on a held-out test set that comes later in time than the training data.</p></div>
+  <table><thead><tr><th>Measure</th><th>Result</th><th>What it means</th></tr></thead><tbody id="mrows"></tbody></table>
+  <div class="prose"><h2>Failure rate by risk level</h2><p>Share of test runs that failed at each level. Runs scoring <span data-bind="thr"></span> or higher are flagged as likely to fail.</p></div>
+  <div style="max-width:560px;margin-top:16px" id="mbars"></div>
+</main>
+
+<!-- Data -->
+<main class="page" id="p-data">
+  <div class="prose"><h2>Where the data comes from</h2><p>Two sources of GitHub Actions runs, joined end to end in time.</p></div>
+  <div class="split" style="margin-top:28px">
+    <div class="prose"><h3>GADFPD</h3>
+      <p>GitHub Actions CI/CD Failure Prediction Dataset by Faruna et al. (2026), Mendeley Data, DOI 10.17632/mggwn7rj9f.1. Licence CC BY 4.0. Covers runs from 8 August 2016 to 18 April 2026.</p></div>
+    <div class="prose"><h3>Own collection</h3>
+      <p>23,818 workflow runs from 14 public repositories, 19 April to 20 November 2026, collected with the GitHub REST API. Repository and actor names are hashed and no commit message text is stored.</p></div>
+  </div>
+  <div class="prose" style="margin-top:36px"><p>Only runs with a clear success or failure outcome and a first attempt are kept. Runs are sorted by time and split 70% train, 15% validation and 15% test, so the test set is always the most recent data.</p></div>
+</main>
+
+<!-- Method -->
+<main class="page" id="p-method">
+  <div class="prose"><h2>How it was built</h2>
+  <p>Six algorithms were tuned: Logistic Regression, Decision Tree, KNN, Linear SVM, Random Forest and Histogram Gradient Boosting. Each used randomized search with 5-fold time-series cross-validation, and the winner was picked by validation macro-F1. That was <strong data-bind="model"></strong>, trained with class weights.</p>
+  <p>It uses <strong><span data-bind="nfeat"></span> features</strong>: change size, merge flag, hour, weekday, branch, trigger event, and run history (previous outcome, failure rate over the last 10 runs, number of earlier runs) for both the repository and the workflow.</p>
+  <h2 style="margin-top:40px">Limitations</h2>
+  <ul>
+    <li>Failures are fairly rare. At the chosen threshold the model finds about <span data-bind="failrec"></span> of them, so it misses some failures and raises some false alarms.</li>
+    <li>Most of the signal comes from run history. A brand new repository or workflow is judged mainly on change size and trigger.</li>
+    <li>The failure rate differs between the two data sources, and repositories change over time, so the model should be retrained periodically.</li>
+    <li>The score ranks runs. It is not a literal probability of failure, because of the class weights.</li>
+  </ul></div>
 </main>
 
 <script>
-const form = document.getElementById("form");
-const errBox = document.getElementById("error");
-const wfHas = document.getElementById("wfHas");
-const wfFields = document.getElementById("wfFields");
-const LEVELS = ["Low", "Medium", "High"];
+const $ = id => document.getElementById(id);
+const pct = (x, d = 0) => (x * 100).toFixed(d) + "%";
+const LEVELS = ["Low", "Medium", "High"], COLOR = {Low: "var(--low)", Medium: "var(--med)", High: "var(--high)"};
 
-function syncWorkflow() {
-  wfFields.querySelectorAll("input").forEach(i => i.disabled = !wfHas.checked);
-  wfFields.style.opacity = wfHas.checked ? 1 : .5;
+/* data: defaults are this model's real numbers; Flask overrides them from /meta */
+let META = {events:["push","pull_request","schedule","workflow_dispatch"],
+  metrics:{macro_F1:.689,fail_F1:.447,fail_prec:.545,fail_rec:.379,ROC_AUC:.845,PR_AUC:.504},
+  model_name:"Hist Gradient Boosting", rates:{Low:.0206,Medium:.1486,High:.5454,overall:.1301}, threshold:.86, n_features:17};
+const NAMES = {macro_F1:"Macro F1",fail_F1:"Failure F1",fail_prec:"Failure precision",fail_rec:"Failure recall",ROC_AUC:"ROC-AUC",PR_AUC:"PR-AUC"};
+const MEANS = {macro_F1:"F1 averaged over success and failure, so the rare failures count equally.",fail_F1:"Balance of precision and recall on failing runs.",fail_prec:"Of the runs flagged as likely to fail, the share that really failed.",fail_rec:"Of the runs that really failed, the share the model flagged.",ROC_AUC:"How often a failing run scores higher than a passing one.",PR_AUC:"Precision against recall on the rare failure class."};
+function fillStatic() {
+  const m = META, r = m.rates;
+  const bind = {overall: pct(r.overall, 1), failrec: pct(m.metrics.fail_rec || 0), model: m.model_name, thr: pct(m.threshold), nfeat: m.n_features};
+  document.querySelectorAll("[data-bind]").forEach(e => e.textContent = bind[e.dataset.bind]);
+  $("ladder").innerHTML = LEVELS.map(l => `<div class="rung"><span class="lab"><i style="background:${COLOR[l]}"></i>${l} risk</span><b>${pct(r[l], 1)}</b><div class="trk"><i style="width:${r[l] * 100}%;background:${COLOR[l]}"></i></div><span class="cap">of runs failed in test data</span></div>`).join("");
+  $("mrows").innerHTML = Object.entries(m.metrics).map(([k, v]) => `<tr><td>${NAMES[k] || k}</td><td class="v">${Number(v).toFixed(3)}</td><td class="d">${MEANS[k] || ""}</td></tr>`).join("");
+  $("mbars").innerHTML = LEVELS.map(l => `<div class="bar sel" style="--c:${COLOR[l]};grid-template-columns:70px 1fr 56px"><span>${l}</span><div class="bt"><div class="fill" style="width:${r[l] / r.High * 100}%"></div></div><span>${pct(r[l], 1)}</span></div>`).join("");
+  const sel = document.querySelector("select[name=event]");
+  if (m.events.join() !== [...sel.options].map(o => o.value).join()) sel.innerHTML = m.events.map(e => `<option value="${e}"${e === "push" ? " selected" : ""}>${e}</option>`).join("");
 }
-wfHas.addEventListener("change", syncWorkflow);
-syncWorkflow();
+fillStatic();
+fetch("/meta").then(r => r.ok ? r.json() : null).then(j => { if (j) { META = j; fillStatic(); } }).catch(() => {});
+
+/* pages */
+const PAGES = ["overview", "classify", "model", "data", "method"];
+function route() {
+  const id = PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : "overview";
+  PAGES.forEach(p => $("p-" + p).classList.toggle("on", p === id));
+  document.querySelectorAll(".tabs a").forEach(a => a.getAttribute("href") === "#" + id ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  window.scrollTo(0, 0);
+}
+addEventListener("hashchange", route); route();
+
+
+/* form */
+const form = $("form"), errBox = $("error"), wfHas = $("wfHas"), wfFields = $("wfFields");
+function syncWorkflow() { wfFields.querySelectorAll("input").forEach(i => i.disabled = !wfHas.checked); wfFields.style.opacity = wfHas.checked ? 1 : .45; }
+wfHas.addEventListener("change", syncWorkflow); syncWorkflow();
+
+const PRESETS = {
+  safe:  {additions:12, deletions:4, files_modified:1, msg_len:48, is_merge:false, branch_is_main:false, hour:10, dow:1, repo_prior_runs:400, repo_failures_last10:0, repo_prev:"success", wf_has_history:true, wf_prior_runs:150, wf_failures_last10:0, wf_prev:"success"},
+  risky: {additions:900, deletions:350, files_modified:34, msg_len:12, is_merge:true, branch_is_main:true, hour:2, dow:5, repo_prior_runs:60, repo_failures_last10:6, repo_prev:"failure", wf_has_history:true, wf_prior_runs:25, wf_failures_last10:5, wf_prev:"failure"}
+};
+document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => {
+  const f = form.elements;
+  for (const [k, v] of Object.entries(PRESETS[b.dataset.preset])) {
+    if (k === "repo_prev" || k === "wf_prev") f[k].value = v; else if (typeof v === "boolean") f[k].checked = v; else f[k].value = v;
+  }
+  syncWorkflow();
+}));
 
 function collect() {
   const f = form.elements, num = n => f[n].value.trim() === "" ? null : Number(f[n].value);
@@ -139,54 +311,53 @@ function collect() {
     repo_prior_runs: num("repo_prior_runs"), repo_prev: f.repo_prev.value,
     repo_failures_last10: num("repo_failures_last10"), wf_has_history: wfHas.checked
   };
-  if (wfHas.checked) {
-    body.wf_prior_runs = num("wf_prior_runs"); body.wf_prev = f.wf_prev.value;
-    body.wf_failures_last10 = num("wf_failures_last10");
-  }
+  if (wfHas.checked) { body.wf_prior_runs = num("wf_prior_runs"); body.wf_prev = f.wf_prev.value; body.wf_failures_last10 = num("wf_failures_last10"); }
   return body;
 }
-
+function clearInvalid() { form.querySelectorAll("[aria-invalid]").forEach(i => i.removeAttribute("aria-invalid")); }
 function showError(msg) {
-  document.getElementById("result").style.display = "none";
-  errBox.textContent = msg; errBox.style.display = "block";
+  errBox.textContent = msg; errBox.style.display = "block"; clearInvalid();
+  const m = msg.match(/'([a-z_0-9]+)'/);
+  if (m && form.elements[m[1]] && form.elements[m[1]].setAttribute) form.elements[m[1]].setAttribute("aria-invalid", "true");
+  errBox.scrollIntoView({behavior: "smooth", block: "nearest"});
 }
-
 form.addEventListener("submit", async e => {
-  e.preventDefault();
-  errBox.style.display = "none";
-  const btn = document.getElementById("go"); btn.disabled = true;
+  e.preventDefault(); errBox.style.display = "none"; clearInvalid();
+  const btn = $("go"); btn.disabled = true; btn.textContent = "Classifying…";
   try {
     const res = await fetch("/predict", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(collect())});
     const out = await res.json();
     if (!res.ok) { showError(out.error || "The server could not classify this run."); return; }
     render(out);
-  } catch (err) {
-    showError("Could not reach the server. Check that the Flask app is running.");
-  } finally { btn.disabled = false; }
+  } catch (err) { showError("Could not reach the server. Check that the Flask app is running."); }
+  finally { btn.disabled = false; btn.textContent = "Classify run"; }
 });
 
 function render(o) {
-  const pct = (x, d = 0) => (x * 100).toFixed(d) + "%";
-  document.getElementById("rLevel").textContent = o.risk_level;
-  document.getElementById("rClass").textContent = o.predicted_failure ? "Likely to fail" : "Likely to succeed";
-  document.getElementById("rScore").textContent = pct(o.probability);
+  $("empty").hidden = true; $("result").hidden = false;
+  $("panel").style.setProperty("--c", COLOR[o.risk_level]);
+  $("rClass").textContent = o.predicted_failure ? "Likely to fail" : "Likely to succeed";
+  $("rLevel").textContent = o.risk_level + " risk";
+  $("rScore").textContent = pct(o.probability); $("rThr").textContent = pct(o.threshold);
+  $("mark").style.left = Math.min(Math.max(o.probability * 100, 1), 99) + "%";
+  $("thr").style.left = (o.threshold * 100) + "%";
   let t = "";
   if (o.observed_failure_rate != null) {
-    t = `In the held-out test data, runs at this risk level failed ${pct(o.observed_failure_rate, 1)} of the time.`;
-    if (o.overall_failure_rate != null) t += ` Across all test runs the failure rate was ${pct(o.overall_failure_rate, 1)}.`;
+    t = `In held-out test data, runs at this risk level failed ${pct(o.observed_failure_rate, 1)} of the time.`;
+    if (o.overall_failure_rate != null) t += ` Across all test runs: ${pct(o.overall_failure_rate, 1)}.`;
   }
-  document.getElementById("rText").textContent = t;
-  const bars = document.getElementById("bars"); bars.innerHTML = "";
+  $("rText").textContent = t;
+  const bars = $("bars"); bars.innerHTML = "";
   const max = Math.max(...LEVELS.map(l => o.risk_rates[l]), 0.01);
   LEVELS.forEach(l => {
     const row = document.createElement("div");
-    row.className = "bar" + (l === o.risk_level ? " sel" : "");
-    row.innerHTML = `<span>${l}</span><div class="track"><div class="fill" style="width:${o.risk_rates[l] / max * 100}%"></div></div><span>${pct(o.risk_rates[l], 1)}</span>`;
+    row.className = "bar" + (l === o.risk_level ? " sel" : ""); row.style.setProperty("--c", COLOR[l]);
+    row.innerHTML = `<span>${l}</span><div class="bt"><div class="fill"></div></div><span>${pct(o.risk_rates[l], 1)}</span>`;
     bars.appendChild(row);
+    requestAnimationFrame(() => requestAnimationFrame(() => row.querySelector(".fill").style.width = (o.risk_rates[l] / max * 100) + "%"));
   });
-  document.getElementById("rNote").textContent =
-    `The model risk score ranks runs by risk. It is not a literal chance of failure, because the model was trained with class weights. A run is classified as likely to fail at a score of ${pct(o.threshold)} or higher. Model: ${o.model}.`;
-  document.getElementById("result").style.display = "block";
+  $("rNote").textContent = `The score ranks runs by risk. It is not a literal chance of failure, because the model was trained with class weights. Runs scoring ${pct(o.threshold)} or higher are flagged. Model: ${o.model}.`;
+  if (matchMedia("(max-width:900px)").matches) $("panel").scrollIntoView({behavior: "smooth", block: "start"});
 }
 </script>
 </body>

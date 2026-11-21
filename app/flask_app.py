@@ -44,8 +44,13 @@ def clean_inputs(data):
 
 @app.get("/")
 def index():
-    return render_template("index.html", events=EVENTS, metrics=bundle.get("test_metrics", {}),
-                           model_name=bundle["model_name"])
+    return render_template("index.html")
+
+
+@app.get("/meta")
+def meta():
+    return jsonify(events=EVENTS, metrics=bundle.get("test_metrics", {}), model_name=bundle["model_name"],
+                   rates=bundle["risk_rates"], threshold=bundle["threshold"], n_features=len(bundle["features"]))
 
 
 @app.get("/health")
