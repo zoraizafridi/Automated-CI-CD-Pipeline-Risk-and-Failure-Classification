@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.DS_Store
 data/cleaned_runs.csv.gz
 data/final_research_dataset_MASTER.csv
-__pycache__/
-.ipynb_checkpoints/
