@@ -97,7 +97,14 @@ def risk_level(bundle, proba):
 
 def predict(bundle, d):
     X = make_features(d, bundle["features"])
-    proba = float(bundle["pipeline"].predict_proba(X)[:, 1][0])
+    raw = float(bundle["pipeline"].predict_proba(X)[:, 1][0])
+    cal = bundle.get("probability_calibrator")
+    if cal is not None:
+        # The threshold and risk bands were chosen on Platt-calibrated scores, so apply the same calibration here.
+        r = float(np.clip(raw, 1e-6, 1 - 1e-6))
+        proba = float(cal.predict_proba([[np.log(r / (1 - r))]])[0, 1])
+    else:
+        proba = raw
     thr = float(bundle["threshold"])
     level = risk_level(bundle, proba)
     rates = bundle.get("risk_rates") or {}
@@ -108,6 +115,7 @@ def predict(bundle, d):
         "risk_level": level,
         "observed_failure_rate": rates.get(level),
         "overall_failure_rate": rates.get("overall"),
+        "raw_score": raw,
         "model": bundle["model_name"],
     }
 
