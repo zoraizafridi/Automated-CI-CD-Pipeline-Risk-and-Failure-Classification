@@ -28,11 +28,10 @@ The class-weighted model output is calibrated with sigmoid (Platt) scaling on th
 import joblib
 from huggingface_hub import hf_hub_download
 
-repo = "zoraizafridi/ci-failure-risk"
+repo = "zopi12/ci-failure-risk"
 bundle = joblib.load(hf_hub_download(repo, "ci_failure_model.joblib"))
 # also download ci_utils.py next to your script, then:
-import numpy as np
-from ci_utils import make_features
+from ci_utils import predict
 
 inputs = {
     "additions": 40, "deletions": 10, "files_modified": 3, "msg_len": 60,
@@ -40,14 +39,8 @@ inputs = {
     "repo_prior_runs": 200, "repo_prev": "success", "repo_failures_last10": 1,
     "wf_has_history": True, "wf_prior_runs": 100, "wf_prev": "success", "wf_failures_last10": 1,
 }
-X = make_features(inputs, bundle["features"])
-raw_score = float(bundle["pipeline"].predict_proba(X)[:, 1][0])
-raw_score = np.clip(raw_score, 1e-6, 1 - 1e-6)
-logit_score = np.log(raw_score / (1 - raw_score))
-failure_probability = float(
-    bundle["probability_calibrator"].predict_proba([[logit_score]])[0, 1]
-)
-print(f"Estimated failure probability: {failure_probability:.1%}")
+result = predict(bundle, inputs)  # applies Platt calibration, threshold and risk bands
+print(f"Estimated failure probability: {result['probability']:.1%} ({result['risk_level']} risk)")
 ```
 Requires `scikit-learn==1.9.1`, `numpy==2.5.4`, `pandas==3.0.6`, `joblib==1.6.0` (Python 3.12). Other versions may fail to unpickle.
 
@@ -64,7 +57,7 @@ Selected model: Hist Gradient Boosting (class-weighted). 17 features: change siz
 ## Evaluation (held-out, time-ordered test set, scored once)
 | macro-F1 | failure F1 | failure precision | failure recall | ROC-AUC | PR-AUC |
 |---|---|---|---|---|---|
-| 0.689 | 0.447 | 0.545 | 0.379 | 0.845 | 0.504 |
+| 0.690 | 0.449 | 0.540 | 0.384 | 0.845 | 0.504 |
 
 The notebook regenerates the calibrated decision threshold, held-out test metrics and observed test failure rates by risk level whenever the model is retrained. The values in the model artifact are authoritative for the deployed version.
 

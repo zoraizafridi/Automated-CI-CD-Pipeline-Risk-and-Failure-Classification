@@ -11,4 +11,4 @@ pinned: false
 ---
 
 Classifies a GitHub Actions run as likely to fail or succeed before it starts, and assigns a Low, Medium or High risk level.
-The scikit-learn pipeline is loaded from the model repository on the Hub (`zoraizafridi/ci-failure-risk`).
+The scikit-learn pipeline is loaded from the model repository on the Hub (`zopi12/ci-failure-risk`).
