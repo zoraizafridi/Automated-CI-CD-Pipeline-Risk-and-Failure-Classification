@@ -54,9 +54,9 @@ Selected model: Hist Gradient Boosting (class-weighted). 17 features: change siz
 ## Evaluation (held-out, time-ordered test set, scored once)
 | macro-F1 | failure F1 | failure precision | failure recall | ROC-AUC | PR-AUC |
 |---|---|---|---|---|---|
-| 0.689 | 0.447 | 0.545 | 0.379 | 0.845 | 0.504 |
+| 0.690 | 0.449 | 0.540 | 0.384 | 0.845 | 0.504 |
 
-Decision threshold 0.86. Observed test failure rate by risk level: Low 2.1%, Medium 14.9%, High 54.5% (overall 13.0%).
+Decision threshold 0.39 (on Platt-calibrated scores). Observed test failure rate by risk level: Low 2.1%, Medium 14.8%, High 54.0% (overall 13.0%).
 
 ## Limitations
 - Failures are fairly rare, and at the chosen threshold the model finds about 38% of them, so it misses some failures and raises some false alarms.
