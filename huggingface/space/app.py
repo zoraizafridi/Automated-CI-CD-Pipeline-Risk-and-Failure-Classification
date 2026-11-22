@@ -7,7 +7,16 @@ from huggingface_hub import hf_hub_download
 
 from ci_utils import event_choices, predict
 
-MODEL_REPO = os.environ.get("MODEL_REPO", "zoraizafridi/ci-failure-risk")
+try:
+    import spaces
+
+    @spaces.GPU
+    def _gpu_placeholder():
+        return 0
+except ImportError:
+    pass  # not on ZeroGPU (local run or CPU Space)
+
+MODEL_REPO = os.environ.get("MODEL_REPO", "zoiiiizxk/ci-failure-risk")
 bundle = joblib.load(hf_hub_download(MODEL_REPO, "ci_failure_model.joblib"))
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
