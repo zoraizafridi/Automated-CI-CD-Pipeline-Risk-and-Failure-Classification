@@ -367,26 +367,8 @@ def classify(additions, deletions, files_modified, msg_len, is_merge, branch_is_
         "wf_failures_last10": wf_fails if has_wf else 0,
     }
     try:
+        # predict() already applies the Platt calibrator, threshold and risk bands.
         out = predict(bundle, inputs)
-        # Convert the class-weighted model score into a calibrated failure
-        # probability using the calibrator fitted on the time-ordered
-        # validation split during training.
-        raw_score = float(np.clip(out["probability"], 1e-6, 1 - 1e-6))
-        logit_score = np.log(raw_score / (1 - raw_score))
-        calibrated = float(
-            bundle["probability_calibrator"].predict_proba([[logit_score]])[0, 1]
-        )
-        out["probability"] = calibrated
-        out["threshold"] = float(bundle["threshold"])
-        out["predicted_failure"] = calibrated >= out["threshold"]
-        bands = bundle["risk_bands"]
-        if calibrated >= bands["high_cut"]:
-            out["risk_level"] = "High"
-        elif calibrated >= bands["low_cut"]:
-            out["risk_level"] = "Medium"
-        else:
-            out["risk_level"] = "Low"
-        out["observed_failure_rate"] = RATES.get(out["risk_level"])
     except (ValueError, KeyError, AttributeError) as e:
         return current, f'<div class="ci"><div class="err" role="alert">{e}</div></div>'
     return result_html(out), ""
